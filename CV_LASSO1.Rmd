@@ -4,7 +4,7 @@ author: "Joshua Freimark"
 date: "05/08/2020"
 output: github_document
 ---
-
+ 
 * R version 4.0.0 (2020-04-24) 
 
 * This analysis uses the Boston, MASS housing data to implement cross validation and CART. The data is imported from my local repository rather then using the BostonHousing package.
