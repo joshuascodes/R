@@ -2,6 +2,3 @@
 .Rhistory
 .RData
 .Ruserdata
-CART_Analysis.Rmd
-CV_LASSO1.Rmd
-Function for KFold CV.Rmd
