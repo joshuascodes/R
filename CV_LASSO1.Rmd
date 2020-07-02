@@ -1,0 +1,336 @@
+---
+title: "CV & LASSO"
+author: "Joshua Freimark"
+date: "05/08/2020"
+output:
+  html_document:
+    df_print: paged
+---
+
+* R version 4.0.0 (2020-04-24) 
+
+* This analysis uses the Boston, MASS housing data to implement cross validation and CART. The data is imported from my local repository rather then using the BostonHousing package.
+
+Load the necessary packages.
+```{r, message=FALSE, warning=FALSE}
+library(readxl)
+library(pastecs)
+library(magrittr)
+library(gridExtra)
+library(ggplot2)
+library(dplyr)
+library(DT)
+library(MASS)
+library(leaps)
+library(glmnet)
+library(PerformanceAnalytics)
+library(corrr)
+library(tidyr)
+```
+
+
+
+Import the data
+```{r, message=FALSE, warning=FALSE}
+Final536 = read_excel("C:/Users/Joshu/OneDrive/Desktop/WSU courses/Econ536/Homework/Final/Final536.xlsx")
+options(scipen=999) #To turn off scientific notation
+```
+
+
+
+* Report descriptive statistics for the variables in the data set 
+
+```{r, include=TRUE, message=FALSE, warning=FALSE}
+stat.desc(Final536[1:13], desc = TRUE, basic = TRUE, norm = FALSE) %>% round(2)
+```
+
+\pagebreak
+```{r, include=TRUE, message=FALSE, warning=FALSE}
+stat.desc(Final536[14:19], desc = TRUE, basic = TRUE, norm = FALSE) %>% round(2)
+```
+### *Descriptive statistics definitions*
+
+* Number of values (nbr.val) 
+
+* Number of null values (nbr.null)
+
+* Number of missing values (nbr.na)
+
+* Minimal value (min)
+
+* Maximal value (max)
+
+* The range (range, that is, max-min) 
+
+* Sum of all non-missing values (sum)
+
+* Median (median)
+
+* Mean (mean)
+
+* The standard error on the mean (SE.mean)
+
+* The confidence interval of the mean (CI.mean) at the p level
+
+* Variance (var)
+
+* Standard deviation (std.dev) 
+
+* The variation coefficient (coef.var) defined as the standard deviation divided by the mean
+
+
+
+
+
+
+
+
+
+
+* Use the LASSO estimator to select the right hand side variables from crim, zn, indus, nox, rm, age, dis, rad, tax, ptratio, black, lstat.
+
+Subset the data
+```{r message=FALSE, warning=FALSE}
+df = subset(Final536, select=c(medv, crim, zn, indus, nox, rm, age, dis, rad, tax, ptratio,
+                               black, lstat))
+attach(df)
+```
+
+* Split the data into 80\% training data and 20\% testing data and standardize the variables. The function 'model.matrix()' automatically transforms qualitative variables into dummy variables b/c glmnet() can only take numerical, quantitative inputs.
+```{r, include=TRUE, message=FALSE, warning=FALSE}
+set.seed(123)
+x = model.matrix(medv~., df)[,-1]                # drop medv from the first column
+y = as.matrix(medv, df) 
+
+
+index = sample(nrow(df),nrow(df)*0.80)           #Split
+df.X.std = scale(dplyr::select(df, -medv))       #Standardize
+
+X.train= as.matrix(df.X.std)[index,]
+X.test=  as.matrix(df.X.std)[-index,]
+
+Y.train= df[index, "medv"]
+Y.test<- df[-index, "medv"]
+
+
+Y.train = as.matrix(Y.train)
+Y.test = as.matrix(Y.test)
+```
+
+
+
+
+
+
+\pagebreak
+
+Now fit the LASSO model to the training data. We can see by the plot that the value of lambda will have a large impact on the coefficients included in the model.
+```{r, include=TRUE, message=FALSE, warning=FALSE}
+lasso1= glmnet(x=X.train, y=Y.train, family = "gaussian", alpha = 1)
+plot(lasso1, xvar = "lambda", label=TRUE)
+
+```
+
+\pagebreak
+
+
+
+
+
+
+* Make predictions based on the testing data. The tuning parameter-lambda (0 $\le \lambda \le$ 1) is represented by `s` in the coef() function and 'lambda' in the glmnet function. We choose 0.2 to start although there are more efficient ways to choose lambda. A large lambda will penalize the coefficients towards 0 more than a low value for lambda. 
+```{r message=FALSE, warning=FALSE}
+lasso_predict_train = predict(lasso1, s = 0.2, newx = X.test) 
+mean((lasso_predict_train - Y.test)^2)                             # MSE for the testing data 
+```
+
+
+
+
+Model Validation. Estimate the model on the testing data.
+```{r message=FALSE, warning=FALSE}
+lasso_test = glmnet(X.test, Y.test, alpha = 1, lambda = 0.2)      # LASSO on test dataset
+lasso_test_coef = predict(lasso_test, type = "coefficients", s = 0.2) 
+lasso_test_coef
+```
+
+
+*LASSO results are summarized at the bottom of this page in the 'comparison table'*
+```{r message=FALSE, warning=FALSE}
+lasso_predict_train = predict(lasso1, newx = X.train, s=0.2)           #Train Prediction
+lasso_predict_test= predict(lasso1, newx = X.test, s=0.2)              #Test Prediction
+
+lasso_lambda_2_mse = mean((Y.train-lasso_predict_train)^2)              #Mean squared error
+lasso_lambda_2_mpse = mean((Y.test-lasso_predict_test)^2)              #Mean squared prediction error
+
+sst = sum((Y.train - mean(Y.train))^2)
+sse_lambda_2 = sum((Y.train-lasso_predict_train)^2)                    #Sum squared error
+
+rsq_lambda_2 = 1 - sse_lambda_2 / sst                                  #R_squared
+adj_rsq_lambda_2 = 1 - (dim(X.train)[1]-1)*(1-rsq_lambda_2)/(dim(X.train)[1]-10-1)
+
+summary_stats = c("Lambda 2 model", lasso_lambda_2_mse, rsq_lambda_2, adj_rsq_lambda_2,
+  lasso_lambda_2_mpse)
+comparison_table = c("model type", "MSE", "R-Squared", "Adj R-Squared", "Test MSPE")
+data.frame(cbind(comparison_table, summary_stats))
+```
+
+\   
+
+
+*Reporting only the right hand side independent variables selected by LASSO.*
+```{r message=FALSE, warning=FALSE}
+lasso_test_coef[lasso_test_coef != 0]
+```
+
+\pagebreak
+
+
+
+### Post LASSO
+
+* All the variables except for indus are statistically significant at the 0.01 level or better. The coefficient standard errors measure the amount that the coefficient estimates vary from the true value of medv. The standard errors for each of the coefficients are small and below 1.0 for most of the coefficients. The only standard errors that are not below 1.0 are nox (3.58) and the intercept (4.93). The $R^{2}$ is 0.7224 which means that 72% of the variation in medv is explained by the model. The residuals show a symmetrical distribution around 0 which we can see by the 25th percentile value that is -2.88 and 75th percentile that is 1.765. The t-values are large relative to the standard errors in the summary output which indicates there is a likely probability that we can reject the null hypothesis. The residual standard error is the average amount that medv will deviate from the predicted regression and in this model the RSE is 4.89 which means that our model should make accurate in-sample predictions.
+
+```{r message=FALSE, warning=FALSE}
+options(scipen = 5)                        #Turn on scientific notation
+mod2 = lm(medv~ crim + zn + indus + nox + rm + dis + ptratio + black + lstat, data = df)
+sum.mod2 = summary(mod2)
+sum.mod2
+detach(df)
+```
+\   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Estimate 3 Models and Compare Their Performance
+
+
+
+* Perform K-fold cross validation to select the optimal value for lambda that will yeild better predictions. I will decide between two values of lambda that are selected on the basis that produce the minimum error, and the second lambda value to decide between is one standard deviation away from the minumum error producing lambda.
+```{r message=FALSE, warning=FALSE}
+DF = Final536                          #Use the entire dataset this time             
+attach(DF)
+
+x = model.matrix(medv~., DF)[,-1]                
+y = as.matrix(medv, DF) 
+
+
+index <- sample(nrow(DF),nrow(DF)*0.80)   
+df.X.std <- scale(dplyr::select(DF, -medv))       
+X.train<- as.matrix(df.X.std)[index,]
+X.test<-  as.matrix(df.X.std)[-index,]
+Y.train<- DF[index, "medv"]
+Y.train = as.matrix(Y.train)
+Y.test<- DF[-index, "medv"]
+Y.test = as.matrix(Y.test)
+train = cbind(Y.train, X.train) %>% as.data.frame()
+test = cbind(Y.test, X.test) %>% as.data.frame()
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+lasso_cv = cv.glmnet(x=X.train, y=Y.train, alpha = 1, nfolds = 10)
+plot(lasso_cv)
+
+lasso2= glmnet(x=X.train, y=Y.train, family = "gaussian", alpha = 1)
+plot(lasso2)
+```
+
+
+Minimum error Lambda.
+```{r message=FALSE, warning=FALSE}
+lasso_cv$lambda.min
+```
+
+
+Minimum error lambda coefficients
+```{r message=FALSE, warning=FALSE}
+coef(lasso2, s=lasso_cv$lambda.min)
+```
+
+
+One standard deviation away from the minimum error producing lambda.
+```{r message=FALSE, warning=FALSE}
+lasso_cv$lambda.1se
+```
+
+
+
+One standard deviation away coefficients.
+```{r message=FALSE, warning=FALSE}
+coef(lasso2, s=lasso_cv$lambda.1se)
+```
+
+
+Minimum error lambda
+```{r message=FALSE, warning=FALSE}
+cv_lasso_predict_train = predict(lasso2, newx = X.train, s=lasso_cv$lambda.min) #Train Prediction
+cv_lasso_predict_test= predict(lasso2, newx = X.test, s=lasso_cv$lambda.min)    #Test Prediction
+
+cv_lasso_mse = mean((Y.train-cv_lasso_predict_train)^2)                #Mean squared error
+cv_lasso_mpse = mean((Y.test-cv_lasso_predict_test)^2)                #Mean squared prediction error
+
+cv_sst = sum((Y.train - mean(Y.train))^2)
+cv_sse = sum((Y.train-cv_lasso_predict_train)^2)                      #Sum squared error
+
+cv_rsq = 1 - cv_sse / cv_sst                                          #R_squared
+cv_adj_rsq = 1 - (dim(X.train)[1]-1)*(1-cv_rsq)/(dim(X.train)[1]-10-1)
+
+cv_summary_stats_min = c("CV min model", cv_lasso_mse, cv_rsq, cv_adj_rsq,
+                         cv_lasso_mpse)
+
+comparison_table = c("model type", "MSE", "R-Squared", "Adj R-Squared", "Test MSPE")
+data.frame(cbind(comparison_table, cv_summary_stats_min))
+```
+
+
+One standard deviation away lambda
+```{r message=FALSE, warning=FALSE}
+cv_lasso_predict_train_1sd = predict(lasso2, newx = X.train, s=lasso_cv$lambda.1se) #Train Prediction
+cv_lasso_predict_test_1sd = predict(lasso2, newx = X.test, s=lasso_cv$lambda.1se)   #Test Prediction
+
+cv_lasso_mse_1sd = mean((Y.train-cv_lasso_predict_train_1sd)^2)          #Mean squared error
+cv_lasso_mpse_1sd = mean((Y.test-cv_lasso_predict_test_1sd)^2)          #Mean squared prediction error
+
+cv_sst_1sd = sum((Y.train - mean(Y.train))^2)
+cv_sse_1sd = sum((Y.train-cv_lasso_predict_train_1sd)^2)                #Sum squared error
+
+cv_rsq_1sd = 1 - cv_sse_1sd / cv_sst_1sd                                #R_squared
+cv_adj_rsq_1sd = 1 - (dim(X.train)[1]-1)*(1-cv_rsq_1sd)/(dim(X.train)[1]-10-1)
+
+cv_summary_stats_1sd = c("CV 1SD model", cv_lasso_mse_1sd, cv_rsq_1sd, cv_adj_rsq_1sd,
+                         cv_lasso_mpse_1sd)
+
+comparison_table = c("model type", "MSE", "R-Squared", "Adj R-Squared", "Test MSPE")
+data.frame(cbind(comparison_table, cv_summary_stats_1sd))
+```
+
+## Comparing the three models
+
+```{r message=FALSE, warning=FALSE}
+data.frame(cbind(comparison_table, summary_stats, cv_summary_stats_min, cv_summary_stats_1sd))
+```
+
+* We can see that the CV min model procudes the lowest MSE, MSPE, and the higheest R squared and adjusted R-squared. This is a fairly accurate model (generally speaking), but we would need something to reference this model to to determine if it has practical use.
+
+
+
+
+
+
+
+

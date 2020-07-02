@@ -1,0 +1,278 @@
+---
+title: "Build a function to perform KFold CV"
+author: Joshua Freimark
+date: 01/2019
+output: html_document
+---
+* R version 4.0.0 (2020-04-24) 
+
+* Build a function that performs K-fold cross validation.
+
+Simulate data
+```{r, message=FALSE, warning=FALSE,}
+n=200;p=500
+x=matrix(rnorm(n*p),n,p)
+b=c(rep(1,5),rep(0,p-5))
+
+y=1+x%*%b+rnorm(n)
+length(y); dim(x)   
+```
+
+
+
+Implementing LASSO
+```{r, message=FALSE, warning=FALSE,}
+library(glmnet)
+model.lasso=glmnet(x,y)      #Set alpha=1  for LASSO. By default the function glmnet will fit a lasso estimate
+hb=coef(model.lasso,s=0.2)   #s = Lambda value. We will try 0.2 to start out
+#hb
+```
+
+
+
+
+Implementing ridge
+```{r, message=FALSE, warning=FALSE,}
+model.ridge=glmnet(x,y,alpha=0)         #alpha=0 indicates the ridge penalty
+hb=coef(model.ridge,s=0.2)              #The tuning parameter (lambda) is represented by `s` in this function
+#hb
+```
+
+
+
+Choosing lambda via cross validation. Begin with lambda=0.01 
+```{r, message=FALSE, warning=FALSE,}
+
+dat=data.frame(x=x,y=y)
+la.grid=seq(0.01,1,length.out=100)
+la.grid
+```
+
+
+
+Compute the corresponding cross validation error (cv.err) for the associated Lambda value
+```{r, message=FALSE, warning=FALSE,}
+k=5     #no.of fols
+n=length(dat$y)
+ncv=ceiling(n/k)
+cv.ind.f=rep(seq(1:k),ncv)
+cv.ind=cv.ind.f[1:n]
+cv.ind.random=sample(cv.ind,n,replace=F)
+
+cv.err=c()
+```
+
+
+
+
+The cross validation function
+```{r, message=FALSE, warning=FALSE,}
+for(l in 1:length(la.grid)){
+  MSE=c()
+  for(j in 1:k){
+    train=dat[cv.ind.random!=j,]
+    response=train$y
+    design=as.matrix(train[,names(dat)!="y"])
+    mod=glmnet(design,response,lambda=la.grid)
+    hb=coef(mod,s=la.grid[l])
+    test=dat[cv.ind.random==j,]
+    resp.test=test$y
+    fitted.values=cbind(1,as.matrix(test[,names(dat)!="y"]))%*%hb
+    MSE[j]=mean((resp.test-fitted.values)^2)
+  }
+  cv.err[l]=mean(MSE)
+}
+```
+
+
+
+
+
+
+Graph displaying the CV error associated with each lambda value
+```{r, message=FALSE, warning=FALSE,}
+plot(la.grid, cv.err,type="l")   
+best.la=la.grid[which.min(cv.err)]
+best.la        #Returns the optimal value for lambda
+```
+
+
+
+
+
+Using the optimal value of lambda selected from the CV function to estimate LASSO
+```{r, message=FALSE, warning=FALSE,}
+model=glmnet(x,y)
+final.hb=coef(model,s=best.la)
+final.hb
+```
+
+
+
+
+
+Using the built in function glmnet to compare if the function we created returns similar results as glmnet
+```{r, message=FALSE, warning=FALSE,}
+cv.mod=cv.glmnet(x,y,nfolds = 5,lambda = seq(0.01,1,length.out = 100))
+cv.mod$lambda.min  #Should return a value close to the value of best.la
+```
+
+
+---
+
+
+Logistic regression to estimate if the S&P500 will move up or down.
+```{r, message=FALSE, warning=FALSE,}
+library(ISLR)
+data(Smarket)
+
+logit.model=glm(Direction~Lag1+Lag2+Lag3+Lag4+Volume,
+                data=Smarket,family=binomial)
+
+summary(logit.model)
+
+glm.probs=predict(logit.model,type="response")
+glm.probs[1:10]
+glm.pred=rep("Down",1250)
+glm.pred[glm.probs>0.5]="Up"
+glm.pred
+
+
+```
+
+Confusion matrix
+```{r, message=FALSE, warning=FALSE,}
+table(glm.pred,Smarket$Direction)
+```
+
+Another example building a cross validation function
+```{r, message=FALSE, warning=FALSE,}
+set.seed(1234)
+n=202
+x=rnorm(n)
+y=-1-0.5*x+1*x^2+rnorm(n)
+```
+
+
+
+```{r, message=FALSE, warning=FALSE,}
+dat=data.frame(y=y,x=x)
+
+k=5   #no. of folds
+n=length(dat$y)
+ncv=ceiling(n/k); ncv
+
+cv.ind.f=rep(seq(1:k),ncv)
+#cv.ind.f
+
+cv.ind=cv.ind.f[1:n]
+length(cv.ind)
+
+cv.ind.random=sample(cv.ind,n,replace=F)
+#cv.ind.random
+```
+
+Build the cross validation function
+```{r, message=FALSE, warning=FALSE,}
+cv.function=function(dat,k){
+  n=length(dat$y)
+  if(k>n){stop("check no. of folds")}
+  ncv=ceiling(n/k); 
+  ##ceiling function is the smallest integer>x
+  ##Example: 4.2-->5, 4.7-->5
+  cv.ind.f=rep(seq(1:k),ncv)
+  #cv.ind.f
+  cv.ind=cv.ind.f[1:n]
+  #length(cv.ind)
+  cv.ind.random=sample(cv.ind,n,replace=F)
+  #cv.ind.random
+  MSE=c()
+  for(j in 1:k){
+    train=dat[cv.ind.random!=j,]
+    response=train$y
+    design=as.matrix(train[,names(dat)!="y"])
+    mod=lm(response~design)
+    hb=coef(mod)
+    test=dat[cv.ind.random==j,]
+    resp.test=test$y
+    fitted.values=cbind(1,as.matrix(test[,names(dat)!="y"]))%*%hb
+    MSE[j]=mean((resp.test-fitted.values)^2)}
+  cv.err=mean(MSE)
+  #cv.err
+  return(cv.err)}
+```
+
+
+
+Models to choose from. Select the model with the lowest cvm (which is the MSE)
+```{r, message=FALSE, warning=FALSE,}
+cvm=c()
+dat1=data.frame(y=y,x1=x)
+cvm[1]=cv.function(dat1,k=5)
+
+dat2=data.frame(y=y,x1=x,x2=x^2)
+cvm[2]=cv.function(dat2,k=5)
+
+dat3=data.frame(y=y,x1=x,x2=x^2,x3=x^3)
+cvm[3]=cv.function(dat3,k=5)
+
+dat4=data.frame(y=y,x1=x,x2=x^2,x3=x^3,x4=x^4)
+cvm[4]=cv.function(dat4,k=5)
+
+dat5=data.frame(y=y,x1=x,x2=x^2,x3=x^3,x4=x^4,x5=x^5)
+cvm[5]=cv.function(dat5,k=5)
+
+dat6=data.frame(y=y,x1=x,x2=x^2,x3=x^3,x4=x^4,x5=x^5,x6=x^6)
+cvm[6]=cv.function(dat6,k=5)
+
+cvm
+```
+
+
+
+Forward selection 
+```{r, message=FALSE, warning=FALSE,}
+library(leaps)
+regfit=regsubsets(y~., data=dat6, method="forward",nvmax=10)
+s=summary(regfit)
+s$adjr2
+```
+
+
+
+
+```{r, message=FALSE, warning=FALSE,}
+
+```
+
+
+
+
+```{r, message=FALSE, warning=FALSE,}
+
+```
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
