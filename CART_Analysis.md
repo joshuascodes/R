@@ -1,11 +1,15 @@
-Multivariate Tree Analysis.
+Regression Trees
 ================
 By: Joshua Freimark
-01/05/2020
-
-  - Applied Statistics and Econometrics - ECON 536
+05/08/2020
 
   - R version 4.0.0 (2020-04-24)
+
+  - Model a univariate and multivariate regression tree and prune the
+    tree using the the Boston, MASS dataset. This script is a extention
+    of the
+    [CV\_LASSO1.md](https://github.com/joshuascodes/R/blob/master/CV_LASSO1.md)
+    file in my R repository.
 
 ### 1\. Univariate Tree Analysis.
 
@@ -456,3 +460,43 @@ bag2
     to reduce the variance further. Our tree does contain some bias due
     to the large depth of the tree. Trees are sensitive to splits and
     the decision to split can have large impacts on the model results.
+
+*Packages used*
+
+``` r
+library(readxl)
+library(pastecs)
+library(magrittr)
+library(gridExtra)
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(dplyr)
+library(DT)
+library(MASS)
+library(leaps)
+library(glmnet)
+library(PerformanceAnalytics)
+library(corrr)
+library(tidyr)
+library(readxl)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(tidyverse)
+library(rpart)                     
+library(rattle)                 
+library(rpart.plot)     
+library(RColorBrewer)           
+library(party)                  
+library(partykit)           
+library(caret)  
+library(olsrr)
+library(FactoMineR)
+library(factoextra)
+library(vip)       
+library(pdp)        
+library(ipred)
+library(tree)
+library(randomForest)
+```
