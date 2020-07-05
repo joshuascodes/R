@@ -1,4 +1,4 @@
-CV & LASSO
+Cross Validation & LASSO
 ================
 Joshua Freimark
 05/08/2020
@@ -6,8 +6,18 @@ Joshua Freimark
   - R version 4.0.0 (2020-04-24)
 
   - This analysis uses the Boston, MASS housing data to implement cross
-    validation and CART. The data is imported from my local repository
-    rather then using the BostonHousing package.
+    validation and least absolute shrinkage and selection operator
+    (LASSO).
+
+  - The data is collected by the U.S Census Service concerning housing
+    in the area of Boston Mass. It is reported in Harrison, D. and
+    Rubinfeld, D.L. \`Hedonic prices and the demand for clean air’, J.
+    Environ. Economics & Management, vol.5, 81-102, 1978. The data is
+    also available at
+    [lib.stat](http://lib.stat.cmu.edu/datasets/boston_corrected.txt)
+
+  - The R package version’s used for this analysis is located at the
+    bottom of this file.
 
 Load the necessary packages.
 
@@ -507,3 +517,17 @@ data.frame(cbind(comparison_table, summary_stats, cv_summary_stats_min, cv_summa
     the higheest R squared and adjusted R-squared. This is a fairly
     accurate model (generally speaking), but we would need something to
     reference this model to to determine if it has practical use.
+
+### Packages used
+
+  - randomForest\_4.6-14, tree\_1.0-40, ipred\_0.9-9, pdp\_0.7.0,
+    vip\_0.2.2, factoextra\_1.0.7, FactoMineR\_2.3, olsrr\_0.5.3,
+    partykit\_1.2-8, libcoin\_1.0-5, party\_1.3-5, strucchange\_1.5-2,
+    sandwich\_2.5-1, modeltools\_0.2-23, mvtnorm\_1.1-1,
+    RColorBrewer\_1.1-2, rattle\_5.4.0, bitops\_1.0-6, forcats\_0.5.0,
+    stringr\_1.4.0, purrr\_0.3.4, readr\_1.3.1, tibble\_3.0.1,
+    tidyverse\_1.3.0, caret\_6.0-86, lattice\_0.20-41, tidyr\_1.1.0,
+    corrr\_0.4.2, PerformanceAnalytics\_2.0.4, xts\_0.12-0, zoo\_1.8-8,
+    glmnet\_4.0-2, Matrix\_1.2-18, leaps\_3.1, MASS\_7.3-51.5, DT\_0.13,
+    dplyr\_1.0.0, rpart.plot\_3.0.8, rpart\_4.1-15, ggplot2\_3.3.1,
+    gridExtra\_2.3, magrittr\_1.5, pastecs\_1.3.21, readxl\_1.3.1
