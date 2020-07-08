@@ -16,7 +16,7 @@ Joshua Freimark
     also available at
     [lib.stat](http://lib.stat.cmu.edu/datasets/boston_corrected.txt)
 
-  - The R package version’s used for this analysis is located at the
+  - The R package version’s used for this analysis are located at the
     bottom of this file.
 
 Load the necessary packages.
