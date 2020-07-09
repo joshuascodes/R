@@ -1,6 +1,6 @@
 Cross Validation & LASSO
 ================
-Joshua Freimark
+Joshua Freimark 
 05/08/2020
 
   - R version 4.0.0 (2020-04-24)
